@@ -13,9 +13,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-  schedule:
+  #schedule:
     # Daily 5am australian/brisbane time
-    - cron: '0 19 * * *'
+    # Disable for fork - cron: '0 19 * * *'
 
    # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -236,3 +236,41 @@ jobs:
           project: "Octopus.Client"
           packages: |
             Octopus.Client:${{ needs.build.outputs.octoversion_fullsemver }}
+
+  create_github_release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: ${{ !contains( needs.build.outputs.octoversion_fullsemver, '-' ) && github.ref == 'refs/heads/master' }}
+    permissions:
+      contents: write # Required to create releases
+    needs: [ build, test-linux, test-macos, deploy_nuget ]
+    steps:
+      - name: Create GitHub Release 🚀
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tagName = '${{ needs.build.outputs.octoversion_fullsemver }}';
+            try {
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tagName,
+                name: `Release ${tagName}`,
+                body: `## Octopus Client Libraries Release ${tagName}
+
+            This release contains the Octopus Client libraries for .NET.
+
+            ### NuGet Packages
+            - [Octopus.Client.${tagName}](https://www.nuget.org/packages/Octopus.Client/${tagName})
+            - [Octopus.Server.Client.${tagName}](https://www.nuget.org/packages/Octopus.Server.Client/${tagName})`,
+                draft: false,
+                prerelease: false
+              });
+              console.log(`Release ${tagName} created successfully`);
+            } catch (error) {
+              if (error.status === 422) {
+                console.log(`Release for tag ${tagName} already exists, skipping creation`);
+              } else {
+                throw error;
+              }
+            }
