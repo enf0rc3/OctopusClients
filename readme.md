@@ -25,7 +25,7 @@ Kick off the `Create OctopusClients Release` build again if any of the dependenc
 This will push the release to our Octopus server, and trigger the `Octopus.Client` project in the integration space. 
 A deployment will automatically happen to the `Extensions - Internal` environment, and publish the package to [Feedz.io](https://f.feedz.io/octopus-deploy/dependencies/nuget).
 Once ready to be fully released, promote the release to the `Extensions - External` environment.
-
+ 
 ## Compatibility
 See the [Compatibility](https://octopus.com/docs/api-and-integration/compatibility) page in our docs
 
