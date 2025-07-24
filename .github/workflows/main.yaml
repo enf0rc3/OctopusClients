@@ -13,9 +13,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-  schedule:
+  #schedule:
     # Daily 5am australian/brisbane time
-    - cron: '0 19 * * *'
+    # Disable for fork - cron: '0 19 * * *'
 
    # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -118,20 +118,6 @@ jobs:
           name: OctoClientsNuget
           path: ./artifacts/*.nupkg
 
-      - name: Tag release (when not pre-release) 🏷️
-        id: github-tag
-        if: ${{ !contains( steps.build.outputs.octoversion_fullsemver, '-' ) }}
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "refs/tags/${{ steps.build.outputs.octoversion_fullsemver }}",
-              sha: context.sha
-            })
-
   test-linux:
     needs: build
     runs-on: ubuntu-latest
@@ -207,6 +193,7 @@ jobs:
     permissions:
       id-token: write # Required to obtain the ID token from GitHub Actions
       actions: read # Required to download artifact
+      contents: write # Required to create tags and releases
     env:
       OCTOPUS_SPACE: "Core Platform"
     needs: [ build, test-linux, test-macos ]
@@ -216,6 +203,60 @@ jobs:
         with:
           name: OctoClientsNuget
           path: ./artifacts/
+
+      - name: Tag release (when not pre-release) 🏷️
+        id: github-tag
+        if: ${{ !contains( needs.build.outputs.octoversion_fullsemver, '-' ) }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tagName = '${{ needs.build.outputs.octoversion_fullsemver }}';
+            try {
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/tags/${tagName}`,
+                sha: context.sha
+              });
+              console.log(`Tag ${tagName} created successfully`);
+            } catch (error) {
+              if (error.status === 422) {
+                console.log(`Tag ${tagName} already exists, skipping creation`);
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Create GitHub Release 🚀
+        if: ${{ !contains( needs.build.outputs.octoversion_fullsemver, '-' ) }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tagName = '${{ needs.build.outputs.octoversion_fullsemver }}';
+            try {
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tagName,
+                name: `Release ${tagName}`,
+                body: `## Octopus Client Libraries Release ${tagName}
+
+            This release contains the Octopus Client libraries for .NET.
+
+            ### NuGet Packages
+            - [Octopus.Client.${tagName}](https://www.nuget.org/packages/Octopus.Client/${tagName})
+            - [Octopus.Server.Client.${tagName}](https://www.nuget.org/packages/Octopus.Server.Client/${tagName})`,
+                draft: false,
+                prerelease: false
+              });
+              console.log(`Release ${tagName} created successfully`);
+            } catch (error) {
+              if (error.status === 422) {
+                console.log(`Release for tag ${tagName} already exists, skipping creation`);
+              } else {
+                throw error;
+              }
+            }
 
       - name: Login to Octopus Deploy 🐙
         uses: OctopusDeploy/login@v1
