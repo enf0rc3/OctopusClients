@@ -5,48 +5,36 @@ on:
     types: [opened, edited, reopened]
     paths:
       # This is bypassed by the clients-pr-comment-bypass.yaml workflow. It will automatically set a success status for non-clients PRs.
-      - 'clients/**'
+      - 'clients/**' 
 
 jobs:
   validate-pr-comments:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Comments
-        id: get_and_validate_comments
+      - name: Check PR Description
+        id: get_and_validate_pr_description
         uses: actions/github-script@v7
         with:
           script: |
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-            });
-
-            const commentBodies = comments.map(comment => comment.body);
-
+            const prDescription = context.payload.pull_request.body || '';
+            console.log('PR Description:', prDescription);
 
             // ----------------------------
             // Get & Validate "release notes:"
             // ----------------------------
 
-            // Check all the comments for any comment that contains the string "release notes:"
-            // get list of comments that contain the string "release notes:"
-            const releaseNotesComments = commentBodies.filter(comment => comment.toLowerCase().includes('release notes:'));
-
-            // If there is one or multiple,
-            if (releaseNotesComments.length === 0) {
-              core.setFailed('"release notes:" comment is missing');
-              core.setOutput('release_notes_error', '"release notes:" comment is missing');
+            // Check if the PR description contains "release notes:"
+            const releaseNotesMatch = prDescription.toLowerCase().match(/release notes:\s*([\s\S]*?)(?=\n\s*semver:|$)/);
+            
+            if (!releaseNotesMatch) {
+              core.setFailed('"release notes:" section is missing from PR description');
+              core.setOutput('release_notes_error', '"release notes:" section is missing from PR description');
             } else {
-              // Validate the content of the release notes comment
-              // - Check if the comment has content (Another action will extract release notes, we just need at least one thats valid.)
-              const hasValidContent = releaseNotesComments.some(comment => {
-                const content = comment.toLowerCase().split('release notes:')[1]?.trim();
-                return content && content.length > 0;
-              });
-              if (!hasValidContent) {
-                core.setFailed('"release notes:" comment found but no content');
-                core.setOutput('release_notes_error', '"release notes:" comment found but no content');
+              // Validate the content of the release notes
+              const releaseNotesContent = releaseNotesMatch[1]?.trim();
+              if (!releaseNotesContent || releaseNotesContent.length === 0) {
+                core.setFailed('"release notes:" section found but no content');
+                core.setOutput('release_notes_error', '"release notes:" section found but no content');
               }
             }
 
@@ -56,23 +44,21 @@ jobs:
 
             const allowedSemverValues = ["breaking", "feature", "no breaking changes", "major", "minor", "patch"];
 
-            // Check all the comments for any comment that contains the string "semver:"
-            // get list of comments that contain the string "semver:"
-            const semverComments = commentBodies.filter(comment => comment.toLowerCase().includes('semver:'));
-            if (semverComments.length === 0) {
-              core.setOutput('semver_error', '"semver:" comment is missing');
-              core.setFailed('"semver:" comment is missing');
+            // Check if the PR description contains "semver:"
+            const semverMatch = prDescription.toLowerCase().match(/semver:\s*(.+)/);
+            
+            if (!semverMatch) {
+              core.setOutput('semver_error', '"semver:" section is missing from PR description');
+              core.setFailed('"semver:" section is missing from PR description');
             } else {  
-              // Validate the content of the semver comment
-              // - check value following semver: is an allowed semver value.
-              const semverMatch = semverComments[0].toLowerCase().match(/semver:\s*(.+)/);
-              const semverValue = semverMatch ? semverMatch[1].trim() : null;
+              // Validate the content of the semver
+              const semverValue = semverMatch[1].trim();
               console.log(`Semver value found: "${semverValue}"`);
               console.log(`Allowed values: ${allowedSemverValues.join(', ')}`);
 
               if (!semverValue || !allowedSemverValues.includes(semverValue)) {
-                core.setOutput('semver_error', `"semver:" comment found but invalid value: "${semverValue}". Allowed: ${allowedSemverValues.join(', ')}`);
-                core.setFailed(`"semver:" comment found but invalid value: "${semverValue}". Allowed: ${allowedSemverValues.join(', ')}`);
+                core.setOutput('semver_error', `"semver:" section found but invalid value: "${semverValue}". Allowed: ${allowedSemverValues.join(', ')}`);
+                core.setFailed(`"semver:" section found but invalid value: "${semverValue}". Allowed: ${allowedSemverValues.join(', ')}`);
               }
             }
 
@@ -83,23 +69,22 @@ jobs:
         with:
           script: |
             // using the potential `core.setFailed` of the previous steps update the create commit status to reflect success or failure from previous steps. combining the failed failures
-            const validateCommentsFailed = '${{ steps.get_and_validate_comments.outcome }}' === 'failure';
-
+            const validateDescriptionFailed = '${{ steps.get_and_validate_pr_description.outcome }}' === 'failure';
 
             var state = '';
             var description = '';
             var context_name = "Octopus Clients PR Comment Check";
 
-            if (validateCommentsFailed) {
+            if (validateDescriptionFailed) {
               state = 'failure';
 
               var errors = [];
 
-              const releaseNotesFailedMessage = '${{ steps.get_and_validate_comments.outputs.release_notes_error }}';
+              const releaseNotesFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.release_notes_error }}';
               if (releaseNotesFailedMessage) {
                 errors.push(releaseNotesFailedMessage);
               }
-              const semverFailedMessage = '${{ steps.get_and_validate_comments.outputs.semver_error }}';
+              const semverFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.semver_error }}';
               if (semverFailedMessage) {
                 errors.push(semverFailedMessage);
               }
@@ -107,7 +92,7 @@ jobs:
 
             } else {
               state = 'success';
-              description = 'All required comments are present and valid';
+              description = 'All required sections are present and valid in PR description';
             }
 
             // Set the commit status to reflect the success or failure of the previous steps.
