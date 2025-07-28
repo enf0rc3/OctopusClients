@@ -2,19 +2,19 @@ name: Octopus Clients PR Comment Check (Bypass)
 
 # This workflow provides a bypass for PRs that don't involve client changes.
 
-# "clients-pr-comment-validation.yaml" checks the comments on "Clients" PRs.
+# "clients-pr-validation.yaml" checks the description on "Clients" PRs.
 
 # Instead of running the full comment validation workflow on every PR,
 # we use path filtering to only run validation when clients/ folder is modified.
 # This bypass workflow sets a success status immediately for non-client PRs,
 # avoiding unnecessary API calls and improving CI performance.
 
-# For us to block merging client pr's we need to satisfy the the 'Octopus Clients PR Comment Check' branch protection rule.
+# For us to block merging client pr's we need to satisfy the the 'Octopus Clients PR Validation' branch protection rule.
 # This bypass workflow is used to satisfy the branch protection rule.
 
 on:
   pull_request:
-    types: [opened, edited, reopened]
+    types: [opened, edited, reopened, synchronize]
     paths-ignore:
       - 'clients/**'
 
@@ -24,12 +24,11 @@ jobs:
     steps:
       - name: Set success status for non-clients changes
         # This step immediately sets a success status for PRs that don't modify clients/
-        # This prevents the main validation workflow from running and avoids unnecessary
-        # API calls to fetch PR comments when we know they're not required.
+        # This ensures that the branch protection rule (that we have for client pr validations is satisfied for non client changes.
         uses: actions/github-script@v7
         with:
           script: |
-            const context_name = "Octopus Clients PR Comment Check";
+            const context_name = "Octopus Clients PR Validation";
             const sha = context.payload.pull_request.head.sha;
 
             await github.rest.repos.createCommitStatus({
@@ -38,5 +37,5 @@ jobs:
               sha: sha,
               state: "success",
               context: context_name,
-              description: "No clients changes detected - comment check skipped",
+              description: "No clients changes detected - client pr validation skipped",
             }); 

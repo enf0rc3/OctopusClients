@@ -2,9 +2,10 @@ name: Octopus Clients PR Comment Check
 
 on:
   pull_request:
-    types: [opened, edited, reopened]
-    paths:
-      # This is bypassed by the clients-pr-comment-bypass.yaml workflow. It will automatically set a success status for non-clients PRs.
+    types: [opened, edited, reopened, synchronize]
+      paths:
+        # This is bypassed by the clients-pr-validation-bypass.yaml workflow.
+        # It will automatically set a success status for non-clients PRs. But here we validate the description.
       - 'clients/**' 
 
 jobs:
@@ -73,7 +74,7 @@ jobs:
 
             var state = '';
             var description = '';
-            var context_name = "Octopus Clients PR Comment Check";
+            var context_name = "Octopus Clients PR Validation";
 
             if (validateDescriptionFailed) {
               state = 'failure';
