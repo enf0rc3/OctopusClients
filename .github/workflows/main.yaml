@@ -245,27 +245,43 @@ jobs:
   create_github_release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    if: ${{ !contains( needs.build.outputs.octoversion_fullsemver, '-' ) && github.ref == 'refs/heads/master' && github.event.inputs.releaseNotes != '' }}
+    # Only create release if it's not a pre-release and on the master branch.
+    if: ${{ !contains( needs.build.outputs.octoversion_fullsemver, '-' ) && github.ref == 'refs/heads/master' }}
     permissions:
       contents: write # Required to create releases
-    needs: [ build, test-linux, test-macos ]
+    needs: [ build ]
     steps:
       - name: Create GitHub Release 🚀
         uses: actions/github-script@v7
         with:
           script: |
             const tagName = '${{ needs.build.outputs.octoversion_fullsemver }}';
-            const releaseNotes = '${{ github.event.inputs.releaseNotes }}';
+            
+            // Get commit message from GitHub Actions context (no API call needed)
+            const commitMessage = context.payload.head_commit?.message || '';
+            console.log(`Latest commit message: ${commitMessage}`);
+            
+            // Extract release notes from commit message if it contains "release notes:"
+            let releaseNotes = '';
+            const releaseNoteMarker = 'release notes:';
+            const releaseNoteIndex = commitMessage.toLowerCase().indexOf(releaseNoteMarker);
+            
+            if (releaseNoteIndex !== -1) {
+              releaseNotes = commitMessage.substring(releaseNoteIndex + releaseNoteMarker.length).trim();
+              console.log(`Extracted release notes: ${releaseNotes}`);
+            }
+            
+            // Only create release if release notes are present
+            if (!releaseNotes || releaseNotes.trim() === '') {
+              console.log(`No "release notes:" found in commit message. Skipping GitHub release creation.`);
+              return;
+            }
             
             // Build release body sections
             const sections = [
-              `This release contains the Octopus Client libraries for .NET.`
+              `This release contains the Octopus Client libraries for .NET.`,
+              releaseNotes.trim()
             ];
-            
-            // Add custom release notes if provided
-            if (releaseNotes && releaseNotes.trim() !== '') {
-              sections.push(releaseNotes.trim());
-            }
             
             // Add NuGet packages section
             sections.push(
@@ -281,7 +297,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 tag_name: tagName,
-                name: `Octopus Client Libraries Release ${tagName}`,
+                name: `Octopus Client Release ${tagName}`,
                 body: body,
                 draft: false,
                 prerelease: false
