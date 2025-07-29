@@ -22,20 +22,44 @@ jobs:
             console.debug(prDescription);
             console.debug('--- PR Description end ---');
 
+            // returns the value of a given 'command' (text following the commands ':')
+            function extractCommand(inputString, command) {
+              // regex to match a single line with a 'command' such as "release notes:" or "semver:"
+              const regex = `${command}:\s*(.*)/i`; // 'i' for case-insensitive matching
+
+              // Split the input string into lines (semver and release notes only support single command and single line for simplicity)
+              // If you need multi line release notes, please manually go add them to the github release once it is created on the clients repo.
+              
+              // Find the first line that matches the regex
+              const matchingLine = inputString.split('\n').find(line => regex.test(line));
+              if (matchingLine) {
+                  const match = matchingLine.match(regex);
+                  return {
+                      found: true,
+                      value: match[1].trim() // Trim to remove unnecessary spaces
+                  };
+              }
+
+              // Return an object indicating that it was not found
+              return {
+                  found: false,
+                  value: null
+              };
+            }
+              
             // ----------------------------
             // Get & Validate "release notes:"
             // ----------------------------
+            const releaseNotes = extractCommand(prDescription, 'release notes:');
+            console.debug("Extracted release notes content:", releaseNotes);
 
-            // Check if the PR description contains "release notes:"
-            const releaseNotesMatch = prDescription.toLowerCase().match(/release notes:\s*(.*?)(?=\n|$)/);
-            
-            if (!releaseNotesMatch) {
+            // Validate and return error if incorrect.
+            if (!releaseNotes.found) {
               core.setFailed('"release notes:" section is missing from PR description');
               core.setOutput('release_notes_error', '"release notes:" section is missing from PR description');
             } else {
               // Validate the content of the release notes
-              const releaseNotesContent = releaseNotesMatch[1]?.trim();
-              if (!releaseNotesContent || releaseNotesContent.length === 0) {
+              if (!releaseNotes.value) {
                 core.setFailed('"release notes:" section found but no content');
                 core.setOutput('release_notes_error', '"release notes:" section found but no content');
               }
@@ -45,23 +69,20 @@ jobs:
             // Get & Validate "semver:"
             // ----------------------------
 
+            const semver = extractCommand(prDescription, 'semver:');
+            console.debug("Extracted semver content:", semver);
+
             const allowedSemverValues = ["breaking", "feature", "no breaking changes", "major", "minor", "patch"];
 
-            // Check if the PR description contains "semver:"
-            const semverMatch = prDescription.toLowerCase().match(/semver:\s*(.*?)(?=\n|$)/);
-            
-            if (!semverMatch) {
+            // Validate and return error if incorrect.
+            if (!semver.found) {
               core.setOutput('semver_error', '"semver:" section is missing from PR description');
               core.setFailed('"semver:" section is missing from PR description');
             } else {  
               // Validate the content of the semver
-              const semverValue = semverMatch[1].trim();
-              console.log(`Semver value found: "${semverValue}"`);
-              console.log(`Allowed values: ${allowedSemverValues.join(', ')}`);
-
-              if (!semverValue || !allowedSemverValues.includes(semverValue)) {
-                core.setOutput('semver_error', `"semver:" section found but invalid value: "${semverValue}". Allowed: ${allowedSemverValues.join(', ')}`);
-                core.setFailed(`"semver:" section found but invalid value: "${semverValue}". Allowed: ${allowedSemverValues.join(', ')}`);
+              if (!semver.value || !allowedSemverValues.includes(semver.value)) {
+                core.setOutput('semver_error', `"semver:" section found but invalid value: "${semver.value}". Allowed: ${allowedSemverValues.join(', ')}`);
+                core.setFailed(`"semver:" section found but invalid value: "${semver.value}". Allowed: ${allowedSemverValues.join(', ')}`);
               }
             }
 
