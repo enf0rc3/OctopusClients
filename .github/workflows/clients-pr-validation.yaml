@@ -25,7 +25,7 @@ jobs:
             // ----------------------------
 
             // Check if the PR description contains "release notes:"
-            const releaseNotesMatch = prDescription.toLowerCase().match(/release notes:\s*(.+?)(?=\n|$)/);
+            const releaseNotesMatch = prDescription.toLowerCase().match(/release notes:\s*(.*?)(?=\n|$)/);
             
             if (!releaseNotesMatch) {
               core.setFailed('"release notes:" section is missing from PR description');
@@ -46,7 +46,7 @@ jobs:
             const allowedSemverValues = ["breaking", "feature", "no breaking changes", "major", "minor", "patch"];
 
             // Check if the PR description contains "semver:"
-            const semverMatch = prDescription.toLowerCase().match(/semver:\s*(.+)/);
+            const semverMatch = prDescription.toLowerCase().match(/semver:\s*(.*?)(?=\n|$)/);
             
             if (!semverMatch) {
               core.setOutput('semver_error', '"semver:" section is missing from PR description');
