@@ -12,13 +12,15 @@ jobs:
   validate-pr-comments:
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR Description
+      - name: Verify 'release notes:' and 'semver:' commands have been added to the PR Description and are valid.
         id: get_and_validate_pr_description
         uses: actions/github-script@v7
         with:
           script: |
             const prDescription = context.payload.pull_request.body || '';
-            console.log('PR Description:', prDescription);
+            console.debug('--- PR Description start ---');
+            console.debug(prDescription);
+            console.debug('--- PR Description end ---');
 
             // ----------------------------
             // Get & Validate "release notes:"
