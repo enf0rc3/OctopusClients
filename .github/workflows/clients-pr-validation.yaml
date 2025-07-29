@@ -3,7 +3,7 @@ name: Octopus Clients PR Comment Check
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
-      paths:
+    paths:
         # This is bypassed by the clients-pr-validation-bypass.yaml workflow.
         # It will automatically set a success status for non-clients PRs. But here we validate the description.
       - 'clients/**' 
