@@ -63,48 +63,48 @@ jobs:
               }
             }
 
-      - name: Set success status
-        id: set_success_status
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // using the potential `core.setFailed` of the previous steps update the create commit status to reflect success or failure from previous steps. combining the failed failures
-            const validateDescriptionFailed = '${{ steps.get_and_validate_pr_description.outcome }}' === 'failure';
+      # - name: Set success status
+      #   id: set_success_status
+      #   if: always()
+      #   uses: actions/github-script@v7
+      #   with:
+      #     script: |
+      #       // using the potential `core.setFailed` of the previous steps update the create commit status to reflect success or failure from previous steps. combining the failed failures
+      #       const validateDescriptionFailed = '${{ steps.get_and_validate_pr_description.outcome }}' === 'failure';
 
-            var state = '';
-            var description = '';
-            var context_name = "Octopus Clients PR Validation";
+      #       var state = '';
+      #       var description = '';
+      #       var context_name = "Octopus Clients PR Validation";
 
-            if (validateDescriptionFailed) {
-              state = 'failure';
+      #       if (validateDescriptionFailed) {
+      #         state = 'failure';
 
-              var errors = [];
+      #         var errors = [];
 
-              const releaseNotesFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.release_notes_error }}';
-              if (releaseNotesFailedMessage) {
-                errors.push(releaseNotesFailedMessage);
-              }
-              const semverFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.semver_error }}';
-              if (semverFailedMessage) {
-                errors.push(semverFailedMessage);
-              }
-              description = errors.join(', ');
+      #         const releaseNotesFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.release_notes_error }}';
+      #         if (releaseNotesFailedMessage) {
+      #           errors.push(releaseNotesFailedMessage);
+      #         }
+      #         const semverFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.semver_error }}';
+      #         if (semverFailedMessage) {
+      #           errors.push(semverFailedMessage);
+      #         }
+      #         description = errors.join(', ');
 
-            } else {
-              state = 'success';
-              description = 'All required sections are present and valid in PR description';
-            }
+      #       } else {
+      #         state = 'success';
+      #         description = 'All required sections are present and valid in PR description';
+      #       }
 
-            // Set the commit status to reflect the success or failure of the previous steps.
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.payload.pull_request.head.sha,
-              state: state,
-              context: context_name,
-              description: description,
-            });
+      #       // Set the commit status to reflect the success or failure of the previous steps.
+      #       await github.rest.repos.createCommitStatus({
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         sha: context.payload.pull_request.head.sha,
+      #         state: state,
+      #         context: context_name,
+      #         description: description,
+      #       });
 
   # This is the workflow that adds the clients reminder comment to the PR.
   add-clients-reminder:
