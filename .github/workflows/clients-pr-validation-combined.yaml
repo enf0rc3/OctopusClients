@@ -48,8 +48,7 @@ jobs:
     if: needs.check-client-changes.outputs.has-client-changes == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: write
+      statuses: write
     steps:
       - name: Verify 'release notes:' and 'semver:' commands have been added to the PR Description and are valid.
         id: get_and_validate_pr_description
@@ -179,7 +178,6 @@ jobs:
     if: needs.check-client-changes.outputs.has-client-changes == 'true' && always()
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       pull-requests: write
     steps:
       - name: Create or update clients reminder comment
@@ -262,7 +260,6 @@ jobs:
     if: needs.check-client-changes.outputs.has-client-changes == 'false'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       pull-requests: write
     steps:
       - name: Remove clients reminder comment if present
@@ -313,7 +310,7 @@ jobs:
     if: needs.check-client-changes.outputs.has-client-changes == 'false'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      statuses: write
     steps:
       - name: Set bypass status check for non-client changes
         uses: actions/github-script@v7
