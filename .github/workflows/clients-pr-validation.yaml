@@ -98,7 +98,7 @@ jobs:
             var state = '';
             var description = '';
             // Note this must match the status_check_name in the clients-pr-validation-bypass.yaml workflow.
-            var status_check_name = "Clients pull request requirements";
+            var status_check_name = "Pull Request: Octopus Clients changes have required sections";
 
             if (validateDescriptionFailed) {
               state = 'failure';
