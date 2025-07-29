@@ -25,7 +25,7 @@ jobs:
             // returns the value of a given 'command' (text following the commands ':')
             function extractCommand(inputString, command) {
               // regex to match a single line with a 'command' such as "release notes:" or "semver:"
-              const regex = `${command}:\s*(.*)/i`; // 'i' for case-insensitive matching
+              const regex = new RegExp(`${command}:\\s*(.*)`);
 
               // Split the input string into lines (semver and release notes only support single command and single line for simplicity)
               // If you need multi line release notes, please manually go add them to the github release once it is created on the clients repo.
