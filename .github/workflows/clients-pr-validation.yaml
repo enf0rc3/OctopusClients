@@ -1,190 +1,190 @@
-name: Apply Octopus Clients PR Rules
+# name: Apply Octopus Clients PR Rules
 
-on:
-  pull_request:
-    types: [opened, edited, reopened, synchronize]
-    paths:
-        # This is bypassed by the clients-pr-validation-bypass.yaml workflow.
-        # It will automatically set a success status for non-clients PRs. But here we validate the description.
-      - 'clients/**' 
+# on:
+#   pull_request:
+#     types: [opened, edited, reopened, synchronize]
+#     paths:
+#         # This is bypassed by the clients-pr-validation-bypass.yaml workflow.
+#         # It will automatically set a success status for non-clients PRs. But here we validate the description.
+#       - 'clients/**' 
 
-jobs:
-  validate-clients-pull-request:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Verify 'release notes:' and 'semver:' commands have been added to the PR Description and are valid.
-        id: get_and_validate_pr_description
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prDescription = context.payload.pull_request.body || '';
-            console.debug('--- PR Description start ---');
-            console.debug(prDescription);
-            console.debug('--- PR Description end ---');
+# jobs:
+#   validate-clients-pull-request:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Verify 'release notes:' and 'semver:' commands have been added to the PR Description and are valid.
+#         id: get_and_validate_pr_description
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             const prDescription = context.payload.pull_request.body || '';
+#             console.debug('--- PR Description start ---');
+#             console.debug(prDescription);
+#             console.debug('--- PR Description end ---');
 
-            // returns the value of a given 'command' (text following the commands ':')
-            function extractCommand(inputString, command) {
-              // regex to match a single line with a 'command' such as "release notes:" or "semver:"
-              const regex = new RegExp(`${command}:\\s*(.*)`);
+#             // returns the value of a given 'command' (text following the commands ':')
+#             function extractCommand(inputString, command) {
+#               // regex to match a single line with a 'command' such as "release notes:" or "semver:"
+#               const regex = new RegExp(`${command}:\\s*(.*)`);
 
-              // Split the input string into lines (semver and release notes only support single command and single line for simplicity)
-              // If you need multi line release notes, please manually go add them to the github release once it is created on the clients repo.
+#               // Split the input string into lines (semver and release notes only support single command and single line for simplicity)
+#               // If you need multi line release notes, please manually go add them to the github release once it is created on the clients repo.
               
-              // Find the first line that matches the regex
-              const matchingLine = inputString.split('\n').find(line => regex.test(line));
-              if (matchingLine) {
-                  const match = matchingLine.match(regex);
-                  return {
-                      found: true,
-                      value: match[1].trim() // Trim to remove unnecessary spaces
-                  };
-              }
+#               // Find the first line that matches the regex
+#               const matchingLine = inputString.split('\n').find(line => regex.test(line));
+#               if (matchingLine) {
+#                   const match = matchingLine.match(regex);
+#                   return {
+#                       found: true,
+#                       value: match[1].trim() // Trim to remove unnecessary spaces
+#                   };
+#               }
 
-              // Return an object indicating that it was not found
-              return {
-                  found: false,
-                  value: null
-              };
-            }
+#               // Return an object indicating that it was not found
+#               return {
+#                   found: false,
+#                   value: null
+#               };
+#             }
               
-            // ----------------------------
-            // Get & Validate "release notes:"
-            // ----------------------------
-            const releaseNotes = extractCommand(prDescription, 'release notes');
-            console.debug("Extracted release notes content:", releaseNotes);
+#             // ----------------------------
+#             // Get & Validate "release notes:"
+#             // ----------------------------
+#             const releaseNotes = extractCommand(prDescription, 'release notes');
+#             console.debug("Extracted release notes content:", releaseNotes);
 
-            // Validate and return error if incorrect.
-            if (!releaseNotes.found) {
-              core.setFailed('"release notes:" section is missing from PR description');
-              core.setOutput('release_notes_error', '"release notes:" section is missing from PR description');
-            } else {
-              // Validate the content of the release notes
-              if (!releaseNotes.value) {
-                core.setFailed('"release notes:" section found but no content');
-                core.setOutput('release_notes_error', '"release notes:" section found but no content');
-              }
-            }
+#             // Validate and return error if incorrect.
+#             if (!releaseNotes.found) {
+#               core.setFailed('"release notes:" section is missing from PR description');
+#               core.setOutput('release_notes_error', '"release notes:" section is missing from PR description');
+#             } else {
+#               // Validate the content of the release notes
+#               if (!releaseNotes.value) {
+#                 core.setFailed('"release notes:" section found but no content');
+#                 core.setOutput('release_notes_error', '"release notes:" section found but no content');
+#               }
+#             }
 
-            // ----------------------------
-            // Get & Validate "semver:"
-            // ----------------------------
+#             // ----------------------------
+#             // Get & Validate "semver:"
+#             // ----------------------------
 
-            const semver = extractCommand(prDescription, 'semver');
-            console.debug("Extracted semver content:", semver);
+#             const semver = extractCommand(prDescription, 'semver');
+#             console.debug("Extracted semver content:", semver);
 
-            const allowedSemverValues = ["breaking", "feature", "no breaking changes", "major", "minor", "patch"];
+#             const allowedSemverValues = ["breaking", "feature", "no breaking changes", "major", "minor", "patch"];
 
-            // Validate and return error if incorrect.
-            if (!semver.found) {
-              core.setOutput('semver_error', '"semver:" section is missing from PR description');
-              core.setFailed('"semver:" section is missing from PR description');
-            } else {  
-              // Validate the content of the semver
-              if (!semver.value || !allowedSemverValues.includes(semver.value)) {
-                core.setOutput('semver_error', `"semver:" section found but invalid value: "${semver.value}". Allowed: ${allowedSemverValues.join(', ')}`);
-                core.setFailed(`"semver:" section found but invalid value: "${semver.value}". Allowed: ${allowedSemverValues.join(', ')}`);
-              }
-            }
+#             // Validate and return error if incorrect.
+#             if (!semver.found) {
+#               core.setOutput('semver_error', '"semver:" section is missing from PR description');
+#               core.setFailed('"semver:" section is missing from PR description');
+#             } else {  
+#               // Validate the content of the semver
+#               if (!semver.value || !allowedSemverValues.includes(semver.value)) {
+#                 core.setOutput('semver_error', `"semver:" section found but invalid value: "${semver.value}". Allowed: ${allowedSemverValues.join(', ')}`);
+#                 core.setFailed(`"semver:" section found but invalid value: "${semver.value}". Allowed: ${allowedSemverValues.join(', ')}`);
+#               }
+#             }
 
-      - name: Set status check based on validation results
-        id: set-clients-pull-request-status-check
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // using the potential `core.setFailed` of the previous steps update the create commit status to reflect success or failure from previous steps. combining the failed failures
-            const validateDescriptionFailed = '${{ steps.get_and_validate_pr_description.outcome }}' === 'failure';
+#       - name: Set status check based on validation results
+#         id: set-clients-pull-request-status-check
+#         if: always()
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             // using the potential `core.setFailed` of the previous steps update the create commit status to reflect success or failure from previous steps. combining the failed failures
+#             const validateDescriptionFailed = '${{ steps.get_and_validate_pr_description.outcome }}' === 'failure';
 
-            var state = '';
-            var description = '';
-            // Note this must match the status_check_name in the clients-pr-validation-bypass.yaml workflow.
-            var status_check_name = "Pull Request: Octopus Clients changes have required sections";
+#             var state = '';
+#             var description = '';
+#             // Note this must match the status_check_name in the clients-pr-validation-bypass.yaml workflow.
+#             var status_check_name = "Pull Request: Octopus Clients changes have required sections";
 
-            if (validateDescriptionFailed) {
-              state = 'failure';
+#             if (validateDescriptionFailed) {
+#               state = 'failure';
 
-              var errors = [];
+#               var errors = [];
 
-              const releaseNotesFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.release_notes_error }}';
-              if (releaseNotesFailedMessage) {
-                errors.push(releaseNotesFailedMessage);
-              }
-              const semverFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.semver_error }}';
-              if (semverFailedMessage) {
-                errors.push(semverFailedMessage);
-              }
-              description = errors.join(', ');
+#               const releaseNotesFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.release_notes_error }}';
+#               if (releaseNotesFailedMessage) {
+#                 errors.push(releaseNotesFailedMessage);
+#               }
+#               const semverFailedMessage = '${{ steps.get_and_validate_pr_description.outputs.semver_error }}';
+#               if (semverFailedMessage) {
+#                 errors.push(semverFailedMessage);
+#               }
+#               description = errors.join(', ');
 
-            } else {
-              state = 'success';
-              description = 'All clients pull request requirements have been met';
-            }
+#             } else {
+#               state = 'success';
+#               description = 'All clients pull request requirements have been met';
+#             }
 
-            console.debug("setting status check for:", status_check_name);
-            console.debug("state:", state);
-            console.debug("description:", description);
+#             console.debug("setting status check for:", status_check_name);
+#             console.debug("state:", state);
+#             console.debug("description:", description);
 
-            // Set the commit status to reflect the success or failure of the previous steps.
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.payload.pull_request.head.sha,
-              state: state,
-              context: status_check_name,
-              description: description,
-            });
+#             // Set the commit status to reflect the success or failure of the previous steps.
+#             await github.rest.repos.createCommitStatus({
+#               owner: context.repo.owner,
+#               repo: context.repo.repo,
+#               sha: context.payload.pull_request.head.sha,
+#               state: state,
+#               context: status_check_name,
+#               description: description,
+#             });
 
-  # This is the workflow that adds the clients reminder comment to the PR.
-  add-clients-reminder:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Add or update clients reminder comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const prNumber = context.payload.pull_request.number;
+#   # This is the workflow that adds the clients reminder comment to the PR.
+#   add-clients-reminder:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Add or update clients reminder comment
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             const { owner, repo } = context.repo;
+#             const prNumber = context.payload.pull_request.number;
             
-            // Unique identifier for our bot comment
-            const COMMENT_IDENTIFIER = '<!-- CLIENTS_RELEASE_NOTES_BOT_COMMENT -->';
-            const COMMENT_BODY = `${COMMENT_IDENTIFIER}\n## 📝 Client Changes Detected\n\nThis PR contains changes to the \`clients/\` folder. Please ensure you have added the following to your **PR description**:\n\n- **Release notes:** [Single line describing the changes for end users]\n- **Semver:** [breaking|feature|no breaking changes|major|minor|patch]\n\n> This comment will be automatically removed if you remove all changes to the \`clients/\` folder.\n\n---\n*This is an automated reminder. The PR validation will check for these required sections.*`;
+#             // Unique identifier for our bot comment
+#             const COMMENT_IDENTIFIER = '<!-- CLIENTS_RELEASE_NOTES_BOT_COMMENT -->';
+#             const COMMENT_BODY = `${COMMENT_IDENTIFIER}\n## 📝 Client Changes Detected\n\nThis PR contains changes to the \`clients/\` folder. Please ensure you have added the following to your **PR description**:\n\n- **Release notes:** [Single line describing the changes for end users]\n- **Semver:** [breaking|feature|no breaking changes|major|minor|patch]\n\n> This comment will be automatically removed if you remove all changes to the \`clients/\` folder.\n\n---\n*This is an automated reminder. The PR validation will check for these required sections.*`;
 
-            try {
-              // Get all comments on the PR
-              const { data: comments } = await github.rest.issues.listComments({
-                owner,
-                repo,
-                issue_number: prNumber,
-              });
+#             try {
+#               // Get all comments on the PR
+#               const { data: comments } = await github.rest.issues.listComments({
+#                 owner,
+#                 repo,
+#                 issue_number: prNumber,
+#               });
 
-              // Find existing bot comment
-              const existingComment = comments.find(comment => 
-                comment.body.includes(COMMENT_IDENTIFIER)
-              );
+#               // Find existing bot comment
+#               const existingComment = comments.find(comment => 
+#                 comment.body.includes(COMMENT_IDENTIFIER)
+#               );
 
-              if (existingComment) {
-                // Update existing comment
-                console.log(`Updating existing comment ${existingComment.id}`);
-                await github.rest.issues.updateComment({
-                  owner,
-                  repo,
-                  comment_id: existingComment.id,
-                  body: COMMENT_BODY,
-                });
-                console.log('Comment updated successfully');
-              } else {
-                // Create new comment
-                console.log('Creating new reminder comment');
-                const { data: newComment } = await github.rest.issues.createComment({
-                  owner,
-                  repo,
-                  issue_number: prNumber,
-                  body: COMMENT_BODY,
-                });
-                console.log(`Comment created successfully: ${newComment.id}`);
-              }
+#               if (existingComment) {
+#                 // Update existing comment
+#                 console.log(`Updating existing comment ${existingComment.id}`);
+#                 await github.rest.issues.updateComment({
+#                   owner,
+#                   repo,
+#                   comment_id: existingComment.id,
+#                   body: COMMENT_BODY,
+#                 });
+#                 console.log('Comment updated successfully');
+#               } else {
+#                 // Create new comment
+#                 console.log('Creating new reminder comment');
+#                 const { data: newComment } = await github.rest.issues.createComment({
+#                   owner,
+#                   repo,
+#                   issue_number: prNumber,
+#                   body: COMMENT_BODY,
+#                 });
+#                 console.log(`Comment created successfully: ${newComment.id}`);
+#               }
 
-            } catch (error) {
-              console.error('Error managing comment:', error);
-              core.setFailed(`Failed to manage comment: ${error.message}`);
-            } 
+#             } catch (error) {
+#               console.error('Error managing comment:', error);
+#               core.setFailed(`Failed to manage comment: ${error.message}`);
+#             } 

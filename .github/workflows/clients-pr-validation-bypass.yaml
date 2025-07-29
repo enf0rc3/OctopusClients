@@ -1,141 +1,141 @@
-name: Apply Octopus Clients PR Rules (Bypass)
+# name: Apply Octopus Clients PR Rules (Bypass)
 
-# This workflow provides a bypass for PRs that don't involve client changes.
+# # This workflow provides a bypass for PRs that don't involve client changes.
 
-# "clients-pr-validation.yaml" applies some checks and rules specific to "clients" PRs.
+# # "clients-pr-validation.yaml" applies some checks and rules specific to "clients" PRs.
 
-# We check for changes to the clients/ folder and only run bypass logic when there are NO client changes.
-# This bypass workflow avoids unnecessary API calls and improving CI performance.
+# # We check for changes to the clients/ folder and only run bypass logic when there are NO client changes.
+# # This bypass workflow avoids unnecessary API calls and improving CI performance.
 
-# It is responsible for:
-# - setting a "clients only" required branch protection rule to "success", because the github workflow is skipped for non-clients PRs.
-# - removing the clients reminder comment from the PR if it is present. (this is added by the clients-pr-validation.yaml workflow)
+# # It is responsible for:
+# # - setting a "clients only" required branch protection rule to "success", because the github workflow is skipped for non-clients PRs.
+# # - removing the clients reminder comment from the PR if it is present. (this is added by the clients-pr-validation.yaml workflow)
 
 
-on:
-  pull_request:
-    types: [opened, edited, reopened, synchronize]
-    # Skip this bypass workflow entirely if PR contains ONLY clients/** changes
-    # (let clients-pr-validation.yaml handle those PRs)
-    # PRs with mixed changes (clients + other files) will still run this workflow
-    # but the conditional logic below will prevent bypass actions from executing
-    paths-ignore:
-      - 'clients/**'
+# on:
+#   pull_request:
+#     types: [opened, edited, reopened, synchronize]
+#     # Skip this bypass workflow entirely if PR contains ONLY clients/** changes
+#     # (let clients-pr-validation.yaml handle those PRs)
+#     # PRs with mixed changes (clients + other files) will still run this workflow
+#     # but the conditional logic below will prevent bypass actions from executing
+#     paths-ignore:
+#       - 'clients/**'
 
-jobs:
-  bypass-validate-clients-pull-request:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check for clients changes
-        id: check-clients-changes
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const prNumber = context.payload.pull_request.number;
+# jobs:
+#   bypass-validate-clients-pull-request:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Check for clients changes
+#         id: check-clients-changes
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             const { owner, repo } = context.repo;
+#             const prNumber = context.payload.pull_request.number;
             
-            // Get list of changed files in the PR
-            const { data: files } = await github.rest.pulls.listFiles({
-              owner,
-              repo,
-              pull_number: prNumber,
-            });
+#             // Get list of changed files in the PR
+#             const { data: files } = await github.rest.pulls.listFiles({
+#               owner,
+#               repo,
+#               pull_number: prNumber,
+#             });
             
-            // Check if any files are in the clients/ directory
-            const hasClientsChanges = files.some(file => file.filename.startsWith('clients/'));
+#             // Check if any files are in the clients/ directory
+#             const hasClientsChanges = files.some(file => file.filename.startsWith('clients/'));
             
-            console.log(`Has clients changes: ${hasClientsChanges}`);
-            return hasClientsChanges;
+#             console.log(`Has clients changes: ${hasClientsChanges}`);
+#             return hasClientsChanges;
       
-      - name: Set 'octopus clients pr' status check to "success" because there are no clients changes
-        # Only run if there are NO clients changes
-        if: steps.check-clients-changes.outputs.result == 'false'
-        # This step immediately sets a success status for PRs that don't modify clients/
-        # This ensures that the branch protection rule (that we have for client pr validations is satisfied for non client changes.
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // Note this must match the status_check_name in the clients-pr-validation.yaml workflow.
-            const status_check_name = "Pull Request: Octopus Clients changes have required sections";
-            const sha = context.payload.pull_request.head.sha;
+#       - name: Set 'octopus clients pr' status check to "success" because there are no clients changes
+#         # Only run if there are NO clients changes
+#         if: steps.check-clients-changes.outputs.result == 'false'
+#         # This step immediately sets a success status for PRs that don't modify clients/
+#         # This ensures that the branch protection rule (that we have for client pr validations is satisfied for non client changes.
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             // Note this must match the status_check_name in the clients-pr-validation.yaml workflow.
+#             const status_check_name = "Pull Request: Octopus Clients changes have required sections";
+#             const sha = context.payload.pull_request.head.sha;
 
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: sha,
-              state: "success",
-              context: status_check_name,
-              description: "No clients changes detected - client pull request requirements validation was skipped",
-            });
+#             await github.rest.repos.createCommitStatus({
+#               owner: context.repo.owner,
+#               repo: context.repo.repo,
+#               sha: sha,
+#               state: "success",
+#               context: status_check_name,
+#               description: "No clients changes detected - client pull request requirements validation was skipped",
+#             });
 
-  # This is the workflow that removes the clients reminder comment from the PR.
-  remove-clients-reminder-if-present:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Check for clients changes
-        id: check-clients-changes
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const prNumber = context.payload.pull_request.number;
+#   # This is the workflow that removes the clients reminder comment from the PR.
+#   remove-clients-reminder-if-present:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: read
+#       pull-requests: write
+#     steps:
+#       - name: Check for clients changes
+#         id: check-clients-changes
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             const { owner, repo } = context.repo;
+#             const prNumber = context.payload.pull_request.number;
             
-            // Get list of changed files in the PR
-            const { data: files } = await github.rest.pulls.listFiles({
-              owner,
-              repo,
-              pull_number: prNumber,
-            });
+#             // Get list of changed files in the PR
+#             const { data: files } = await github.rest.pulls.listFiles({
+#               owner,
+#               repo,
+#               pull_number: prNumber,
+#             });
             
-            // Check if any files are in the clients/ directory
-            const hasClientsChanges = files.some(file => file.filename.startsWith('clients/'));
+#             // Check if any files are in the clients/ directory
+#             const hasClientsChanges = files.some(file => file.filename.startsWith('clients/'));
             
-            console.log(`Has clients changes: ${hasClientsChanges}`);
-            return hasClientsChanges;
+#             console.log(`Has clients changes: ${hasClientsChanges}`);
+#             return hasClientsChanges;
 
-      - name: Remove clients reminder comment if present
-        # Only run if there are NO clients changes
-        if: steps.check-clients-changes.outputs.result == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const prNumber = context.payload.pull_request.number;
+#       - name: Remove clients reminder comment if present
+#         # Only run if there are NO clients changes
+#         if: steps.check-clients-changes.outputs.result == 'false'
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             const { owner, repo } = context.repo;
+#             const prNumber = context.payload.pull_request.number;
             
-            // Unique identifier for our bot comment
-            const COMMENT_IDENTIFIER = '<!-- CLIENTS_RELEASE_NOTES_BOT_COMMENT -->';
+#             // Unique identifier for our bot comment
+#             const COMMENT_IDENTIFIER = '<!-- CLIENTS_RELEASE_NOTES_BOT_COMMENT -->';
 
-            try {
-              // Get all comments on the PR
-              const { data: comments } = await github.rest.issues.listComments({
-                owner,
-                repo,
-                issue_number: prNumber,
-              });
+#             try {
+#               // Get all comments on the PR
+#               const { data: comments } = await github.rest.issues.listComments({
+#                 owner,
+#                 repo,
+#                 issue_number: prNumber,
+#               });
 
-              // Find existing bot comment
-              const existingComment = comments.find(comment => 
-                comment.body.includes(COMMENT_IDENTIFIER)
-              );
+#               // Find existing bot comment
+#               const existingComment = comments.find(comment => 
+#                 comment.body.includes(COMMENT_IDENTIFIER)
+#               );
 
-              if (existingComment) {
-                // Delete the comment
-                console.log(`Deleting existing comment ${existingComment.id}`);
-                await github.rest.issues.deleteComment({
-                  owner,
-                  repo,
-                  comment_id: existingComment.id,
-                });
-                console.log('Reminder comment deleted successfully');
-              } else {
-                console.log('No existing reminder comment found - no action needed');
-              }
+#               if (existingComment) {
+#                 // Delete the comment
+#                 console.log(`Deleting existing comment ${existingComment.id}`);
+#                 await github.rest.issues.deleteComment({
+#                   owner,
+#                   repo,
+#                   comment_id: existingComment.id,
+#                 });
+#                 console.log('Reminder comment deleted successfully');
+#               } else {
+#                 console.log('No existing reminder comment found - no action needed');
+#               }
 
-            } catch (error) {
-              console.error('Error removing comment:', error);
-              // Don't fail the workflow for comment cleanup errors
-              console.log('Comment cleanup failed, but continuing...');
-            }
+#             } catch (error) {
+#               console.error('Error removing comment:', error);
+#               // Don't fail the workflow for comment cleanup errors
+#               console.log('Comment cleanup failed, but continuing...');
+#             }
