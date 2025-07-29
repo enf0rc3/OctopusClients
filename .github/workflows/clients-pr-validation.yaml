@@ -1,4 +1,4 @@
-name: Octopus Clients PR Comment Check
+name: Apply Octopus Clients PR Rules
 
 on:
   pull_request:

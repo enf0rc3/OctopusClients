@@ -1,16 +1,16 @@
-name: Octopus Clients PR Comment Check (Bypass)
+name: Apply Octopus Clients PR Rules (Bypass)
 
 # This workflow provides a bypass for PRs that don't involve client changes.
 
-# "clients-pr-validation.yaml" checks the description on "Clients" PRs.
+# "clients-pr-validation.yaml" applies some checks and rules specific to "clients" PRs.
 
-# Instead of running the full comment validation workflow on every PR,
 # we use path filtering to only run validation when clients/ folder is modified.
-# This bypass workflow sets a success status immediately for non-client PRs,
-# avoiding unnecessary API calls and improving CI performance.
+# This bypass workflow avoids unnecessary API calls and improving CI performance.
 
-# For us to block merging client pr's we need to satisfy the the 'Octopus Clients PR Validation' branch protection rule.
-# This bypass workflow is used to satisfy the branch protection rule.
+# It is responsible for:
+# - setting a "clients only" required branch protection rule to "success", because the github workflow is skipped for non-clients PRs.
+# - removing the clients reminder comment from the PR if it is present. (this is added by the clients-pr-validation.yaml workflow)
+
 
 on:
   pull_request:
@@ -41,7 +41,7 @@ jobs:
             });
 
   # This is the workflow that removes the clients reminder comment from the PR.
-  remove-clients-reminder:
+  remove-clients-reminder-if-present:
     runs-on: ubuntu-latest
     permissions:
       contents: read
