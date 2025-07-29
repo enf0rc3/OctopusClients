@@ -4,7 +4,7 @@ name: Apply Octopus Clients PR Rules (Bypass)
 
 # "clients-pr-validation.yaml" applies some checks and rules specific to "clients" PRs.
 
-# we use path filtering to only run validation when clients/ folder is modified.
+# We check for changes to the clients/ folder and only run bypass logic when there are NO client changes.
 # This bypass workflow avoids unnecessary API calls and improving CI performance.
 
 # It is responsible for:
@@ -15,14 +15,35 @@ name: Apply Octopus Clients PR Rules (Bypass)
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
-    paths-ignore:
-      - 'clients/**'
 
 jobs:
   bypass-validate-clients-pull-request:
     runs-on: ubuntu-latest
     steps:
+      - name: Check for clients changes
+        id: check-clients-changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+            
+            // Get list of changed files in the PR
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+            
+            // Check if any files are in the clients/ directory
+            const hasClientsChanges = files.some(file => file.filename.startsWith('clients/'));
+            
+            console.log(`Has clients changes: ${hasClientsChanges}`);
+            return hasClientsChanges;
+      
       - name: Set 'octopus clients pr' status check to "success" because there are no clients changes
+        # Only run if there are NO clients changes
+        if: steps.check-clients-changes.outputs.result == 'false'
         # This step immediately sets a success status for PRs that don't modify clients/
         # This ensures that the branch protection rule (that we have for client pr validations is satisfied for non client changes.
         uses: actions/github-script@v7
@@ -48,7 +69,30 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Check for clients changes
+        id: check-clients-changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+            
+            // Get list of changed files in the PR
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+            
+            // Check if any files are in the clients/ directory
+            const hasClientsChanges = files.some(file => file.filename.startsWith('clients/'));
+            
+            console.log(`Has clients changes: ${hasClientsChanges}`);
+            return hasClientsChanges;
+
       - name: Remove clients reminder comment if present
+        # Only run if there are NO clients changes
+        if: steps.check-clients-changes.outputs.result == 'false'
         uses: actions/github-script@v7
         with:
           script: |
