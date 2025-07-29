@@ -50,7 +50,7 @@ jobs:
             // ----------------------------
             // Get & Validate "release notes:"
             // ----------------------------
-            const releaseNotes = extractCommand(prDescription, 'release notes:');
+            const releaseNotes = extractCommand(prDescription, 'release notes');
             console.debug("Extracted release notes content:", releaseNotes);
 
             // Validate and return error if incorrect.
@@ -69,7 +69,7 @@ jobs:
             // Get & Validate "semver:"
             // ----------------------------
 
-            const semver = extractCommand(prDescription, 'semver:');
+            const semver = extractCommand(prDescription, 'semver');
             console.debug("Extracted semver content:", semver);
 
             const allowedSemverValues = ["breaking", "feature", "no breaking changes", "major", "minor", "patch"];
@@ -119,6 +119,10 @@ jobs:
               state = 'success';
               description = 'All clients pull request requirements have been met';
             }
+
+            console.debug("setting status check for:", status_check_name);
+            console.debug("state:", state);
+            console.debug("description:", description);
 
             // Set the commit status to reflect the success or failure of the previous steps.
             await github.rest.repos.createCommitStatus({
