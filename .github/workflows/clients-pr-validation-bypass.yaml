@@ -15,6 +15,12 @@ name: Apply Octopus Clients PR Rules (Bypass)
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
+    # Skip this bypass workflow entirely if PR contains ONLY clients/** changes
+    # (let clients-pr-validation.yaml handle those PRs)
+    # PRs with mixed changes (clients + other files) will still run this workflow
+    # but the conditional logic below will prevent bypass actions from executing
+    paths-ignore:
+      - 'clients/**'
 
 jobs:
   bypass-validate-clients-pull-request:
